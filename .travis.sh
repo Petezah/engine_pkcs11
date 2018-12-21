@@ -27,6 +27,7 @@ install_from_github() {
     echo "Installing $2"
     git clone https://github.com/$1/$2.git
     cd $2
+    git checkout $3
     autoreconf -fvi
     ./configure
     make
@@ -46,7 +47,7 @@ sudo apt-get install -y libpcsclite-dev softhsm
 export CC=`which $CC`
 mkdir prerequisites
 cd prerequisites
-install_from_github OpenSC OpenSC
-install_from_github OpenSC libp11
+install_from_github OpenSC OpenSC 0.16.0
+install_from_github OpenSC libp11 22de793340ab73cafc92f8238afb51a06d8411c3
 cd ..
 rm -rf prerequisites
