@@ -91,10 +91,12 @@ static void zero_pin(void)
 int set_pin(const char *_pin)
 {
 	/* Pre-condition check */
+	fprintf(stderr, "Trying to set pin\n");
 	if (_pin == NULL) {
 		errno = EINVAL;
 		return 0;
 	}
+	fprintf(stderr, "Setting Pin to %s\n", _pin);
 
 	/* Copy the PIN. If the string cannot be copied, NULL
 	 * shall be returned and errno shall be set. */
@@ -181,6 +183,7 @@ int pkcs11_finish(ENGINE * engine)
 int pkcs11_init(ENGINE * engine)
 {
 	char *mod = module;
+	char *pin_tmp = NULL;
 	int rc;
 
 	/*
@@ -196,6 +199,11 @@ int pkcs11_init(ENGINE * engine)
 #endif
 	if (verbose) {
 		fprintf(stderr, "Initializing engine\n");
+	}
+	pin_tmp = getenv(PIN_ENV_VAR);
+	if (pin_tmp) {
+		set_pin(pin_tmp);
+		fprintf(stderr, "Pin set from env var " PIN_ENV_VAR "\n");
 	}
 	ctx = PKCS11_CTX_new();
 	PKCS11_CTX_init_args(ctx, init_args);
@@ -763,15 +771,19 @@ int load_cert_ctrl(ENGINE * e, void *p)
 static int pkcs11_login(PKCS11_SLOT *slot, PKCS11_TOKEN *tok,
 		UI_METHOD *ui_method, void *callback_data)
 {
+	fprintf(stderr, "Logging in with pin %s\n", pin);
 	if (tok->loginRequired) {
+		fprintf(stderr, "Login was required\n");
 		/* If the token has a secure login (i.e., an external keypad),
 		 * then use a NULL pin. Otherwise, check if a PIN exists. If
 		 * not, allocate and obtain a new PIN. */
 		if (tok->secureLogin) {
+			fprintf(stderr, "Secure login required\n");
 			/* Free the PIN if it has already been
 			 * assigned (i.e, cached by get_pin) */
 			zero_pin();
 		} else if (pin == NULL) {
+			fprintf(stderr, "Pin was NULL\n");
 			pin = (char *)calloc(MAX_PIN_LENGTH, sizeof(char));
 			pin_length = MAX_PIN_LENGTH;
 			if (pin == NULL) {
@@ -807,6 +819,7 @@ static int pkcs11_login(PKCS11_SLOT *slot, PKCS11_TOKEN *tok,
 		/* TODO confirm that multiple login attempts do not introduce
 		 * significant performance penalties */
 	}
+	fprintf(stderr, "PKCS11 Login succeeded\n");
 	return 1;
 }
 
@@ -975,9 +988,10 @@ static EVP_PKEY *pkcs11_load_key(ENGINE * engine, const char *s_slot_key_id,
 	if (!tok->initialized)
 		fprintf(stderr, "Found uninitialized token\n");
 	if (isPrivate && !tok->userPinSet && !tok->readOnly) {
-		fprintf(stderr, "Found slot without user PIN\n");
-		PKCS11_release_all_slots(ctx, slot_list, slot_count);
-		return NULL;
+		fprintf(stderr, "Found slot without user PIN; going to continue anyway\n");
+		// We used to release all slots and return NULL here; but I see no reason for this.
+		// The user will login below, and the PIN will be set at that point.
+		// This check actually doesn't even exist on later versions of this library.
 	}
 
 	if (verbose) {
