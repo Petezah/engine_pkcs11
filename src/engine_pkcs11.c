@@ -61,6 +61,9 @@ int set_module(const char *modulename)
 {
 	free (module);
 	module = modulename ? strdup(modulename) : NULL;
+	if (module != NULL) {
+		fprintf(stderr, "Setting module to %s\n", module);
+	}
 	return 1;
 }
 
@@ -96,7 +99,7 @@ int set_pin(const char *_pin)
 		errno = EINVAL;
 		return 0;
 	}
-	fprintf(stderr, "Setting Pin to %s\n", _pin);
+	fprintf(stderr, "Setting Pin to %.2s**\n", _pin);
 
 	/* Copy the PIN. If the string cannot be copied, NULL
 	 * shall be returned and errno shall be set. */
@@ -184,6 +187,7 @@ int pkcs11_init(ENGINE * engine)
 {
 	char *mod = module;
 	char *pin_tmp = NULL;
+	char *mod_tmp = NULL;
 	int rc;
 
 	/*
@@ -193,9 +197,17 @@ int pkcs11_init(ENGINE * engine)
 	 */
 	(void)engine;
 
+	mod_tmp = getenv(MODULE_ENV_VAR);
+	if (mod_tmp) {
+		set_module(mod_tmp);
+		mod = module;
+		fprintf(stderr, "Module set from env var " MODULE_ENV_VAR "\n");
+	}
 #ifdef DEFAULT_PKCS11_MODULE
-	if (mod == NULL)
+	if (mod == NULL) {
+		fprintf(stderr, "Module NULL; loading default " DEFAULT_PKCS11_MODULE "\n");
 		mod = DEFAULT_PKCS11_MODULE;
+	}
 #endif
 	if (verbose) {
 		fprintf(stderr, "Initializing engine\n");

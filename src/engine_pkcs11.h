@@ -38,6 +38,7 @@
 #include <openssl/engine.h>
 
 #define PIN_ENV_VAR "pkcs11_pin"
+#define MODULE_ENV_VAR "PKCS11_ENGINE_MODULE"
 
 int set_module(const char *modulename);
 
